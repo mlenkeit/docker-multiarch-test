@@ -43,6 +43,6 @@ script:
     docker manifest create mlenkeit/multiarch-test:latest \
             mlenkeit/multiarch-test:latest-armhf \
             mlenkeit/multiarch-test:latest-amd64
-  - docker manifest annotate mlenkeit/multiarch-test:latest mlenkeit/multiarch-test:latest-armhf --arch armhf
+  - docker manifest annotate mlenkeit/multiarch-test:latest mlenkeit/multiarch-test:latest-armhf --arch arm
   - docker manifest annotate mlenkeit/multiarch-test:latest mlenkeit/multiarch-test:latest-amd64 --arch amd64
   - docker manifest push mlenkeit/multiarch-test:latest
