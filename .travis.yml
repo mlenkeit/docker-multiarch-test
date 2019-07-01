@@ -16,33 +16,44 @@ before_install:
   - sudo docker run -d --privileged -p 1234:1234 --name buildkit moby/buildkit:latest --addr tcp://0.0.0.0:1234 --oci-worker-platform linux/amd64 --oci-worker-platform linux/armhf > /dev/null
   - sudo docker cp buildkit:/usr/bin/buildctl /usr/bin/ > /dev/null
   - export BUILDKIT_HOST=tcp://0.0.0.0:1234 > /dev/null
-
-script:
   - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-  - |
-    buildctl build --frontend dockerfile.v0 \
-      --frontend-opt platform=linux/armhf \
-      --frontend-opt filename=./Dockerfile \
-      --export-cache type=registry,ref=docker.io/mlenkeit/multiarch-test:buildcache-armhf \
-      --import-cache type=registry,ref=docker.io/mlenkeit/multiarch-test:buildcache-armhf \
-      --output type=image,name="docker.io/mlenkeit/multiarch-test:latest-armhf",push=true \
-      --local dockerfile=. \
-      --local context=. \
-      --progress plain
-  - |
-    buildctl build --frontend dockerfile.v0 \
-      --frontend-opt platform=linux/amd64 \
-      --frontend-opt filename=./Dockerfile \
-      --export-cache type=registry,ref=docker.io/mlenkeit/multiarch-test:buildcache-amd64 \
-      --import-cache type=registry,ref=docker.io/mlenkeit/multiarch-test:buildcache-amd64 \
-      --output type=image,name="docker.io/mlenkeit/multiarch-test:latest-amd64",push=true \
-      --local dockerfile=. \
-      --local context=. \
-      --progress plain
-  - |
-    docker manifest create mlenkeit/multiarch-test:latest \
-            mlenkeit/multiarch-test:latest-armhf \
-            mlenkeit/multiarch-test:latest-amd64
-  - docker manifest annotate mlenkeit/multiarch-test:latest mlenkeit/multiarch-test:latest-armhf --arch arm
-  - docker manifest annotate mlenkeit/multiarch-test:latest mlenkeit/multiarch-test:latest-amd64 --arch amd64
-  - docker manifest push mlenkeit/multiarch-test:latest
+
+job:
+  include:
+    - stage: "Build Image"
+      name: "armhf"
+      script: |
+        buildctl build --frontend dockerfile.v0 \
+          --frontend-opt platform=linux/armhf \
+          --frontend-opt filename=./Dockerfile \
+          --export-cache type=registry,ref=docker.io/mlenkeit/multiarch-test:buildcache-armhf \
+          --import-cache type=registry,ref=docker.io/mlenkeit/multiarch-test:buildcache-armhf \
+          --output type=image,name="docker.io/mlenkeit/multiarch-test:latest-armhf",push=true \
+          --local dockerfile=. \
+          --local context=. \
+          --progress plain
+    - stage: "Build Image"
+      name: "amd64"
+      script: |
+        buildctl build --frontend dockerfile.v0 \
+          --frontend-opt platform=linux/amd64 \
+          --frontend-opt filename=./Dockerfile \
+          --export-cache type=registry,ref=docker.io/mlenkeit/multiarch-test:buildcache-amd64 \
+          --import-cache type=registry,ref=docker.io/mlenkeit/multiarch-test:buildcache-amd64 \
+          --output type=image,name="docker.io/mlenkeit/multiarch-test:latest-amd64",push=true \
+          --local dockerfile=. \
+          --local context=. \
+          --progress plain
+    - stage: "Deploy Manifest"
+      script:
+        - |
+          docker manifest create mlenkeit/multiarch-test:latest \
+                  mlenkeit/multiarch-test:latest-armhf \
+                  mlenkeit/multiarch-test:latest-amd64
+        - docker manifest annotate mlenkeit/multiarch-test:latest mlenkeit/multiarch-test:latest-armhf --arch arm
+        - docker manifest annotate mlenkeit/multiarch-test:latest mlenkeit/multiarch-test:latest-amd64 --arch amd64
+        - docker manifest push mlenkeit/multiarch-test:latest
+
+stages:
+  - "Build Image"
+  - "Deploy Manifest"
